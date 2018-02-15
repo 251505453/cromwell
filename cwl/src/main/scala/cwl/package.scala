@@ -9,7 +9,7 @@ import io.circe.{Encoder, Json}
 import shapeless._
 import wom.executable.Executable
 import wom.types._
-import wom.values.{WomArray, WomBoolean, WomFloat, WomInteger, WomString, WomValue}
+import wom.values.{WomArray, WomBoolean, WomCoproductValue, WomFile, WomFloat, WomInteger, WomMaybePopulatedFile, WomOptionalValue, WomString, WomValue}
 
 import scala.util.{Failure, Success, Try}
 import io.circe.syntax._
@@ -147,6 +147,9 @@ package object cwl extends TypeAliases {
       case ws: WomString => ws.asJson
       case b: WomBoolean => b.asJson
       case a: WomArray => a.asJson
+      case f: WomMaybePopulatedFile => f.value.asJson
+      case WomOptionalValue(_, Some(value)) => apply(value)
+      case WomCoproductValue(_, value) => apply(value)
     }
   }
 
