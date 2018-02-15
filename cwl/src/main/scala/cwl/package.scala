@@ -5,11 +5,14 @@ import common.validation.Checked._
 import cwl.CwlType._
 import cwl.ExpressionEvaluator.{ECMAScriptExpression, ECMAScriptFunction, InterpolatedString}
 import cwl.command.ParentName
+import io.circe.{Encoder, Json}
 import shapeless._
 import wom.executable.Executable
 import wom.types._
+import wom.values.{WomArray, WomBoolean, WomFloat, WomInteger, WomString, WomValue}
 
 import scala.util.{Failure, Success, Try}
+import io.circe.syntax._
 
 /**
  * This package is intended to parse all CWL files.
@@ -128,4 +131,24 @@ package object cwl extends TypeAliases {
   type ExpressionLib = Vector[String]
 
   val ReadLimit = Option(64 * 1024)
+
+  implicit val stringEncoder = Encoder.encodeString.contramap[WomString](_.value)
+
+  implicit val boolEncoder = Encoder.encodeBoolean.contramap[WomBoolean](_.value)
+
+  implicit val womIntegerEncoder = Encoder.encodeInt.contramap[WomInteger](_.value)
+
+  implicit val womFloatEncoder = Encoder.encodeDouble.contramap[WomFloat](_.value)
+
+  implicit val womValueEncoder = new Encoder[WomValue] {
+    override def apply(a: WomValue): Json = a match {
+      case wi: WomInteger => wi.asJson
+      case wf: WomFloat => wf.asJson
+      case ws: WomString => ws.asJson
+      case b: WomBoolean => b.asJson
+      case a: WomArray => a.asJson
+    }
+  }
+
+  implicit val womArrayEncoder: Encoder[WomArray] = Encoder.encodeSeq[WomValue].contramap[WomArray](_.value)
 }
