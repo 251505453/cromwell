@@ -5,11 +5,11 @@ import common.validation.Checked._
 import cwl.CwlType._
 import cwl.ExpressionEvaluator.{ECMAScriptExpression, ECMAScriptFunction, InterpolatedString}
 import cwl.command.ParentName
-import io.circe.{Encoder, Json}
+import io.circe.{Encoder, Json, JsonObject}
 import shapeless._
 import wom.executable.Executable
 import wom.types._
-import wom.values.{WomArray, WomBoolean, WomCoproductValue, WomFile, WomFloat, WomInteger, WomMaybePopulatedFile, WomOptionalValue, WomString, WomValue}
+import wom.values.{WomArray, WomBoolean, WomCoproductValue, WomFile, WomFloat, WomInteger, WomMaybePopulatedFile, WomObject, WomOptionalValue, WomString, WomValue}
 
 import scala.util.{Failure, Success, Try}
 import io.circe.syntax._
@@ -150,8 +150,17 @@ package object cwl extends TypeAliases {
       case f: WomMaybePopulatedFile => f.value.asJson
       case WomOptionalValue(_, Some(value)) => apply(value)
       case WomCoproductValue(_, value) => apply(value)
+      case wo: WomObject => wo.asJson
+      case WomOptionalValue(_, None) => Json.Null
     }
   }
 
   implicit val womArrayEncoder: Encoder[WomArray] = Encoder.encodeSeq[WomValue].contramap[WomArray](_.value)
+
+  implicit val womObjectEncoder: Encoder[WomObject] =
+    Encoder.encodeJsonObject.contramap[WomObject]{
+      wo =>
+        val jsonMap = wo.values.map{ case (key, value) => key -> value.asJson}
+        JsonObject.fromMap(jsonMap)
+    }
 }

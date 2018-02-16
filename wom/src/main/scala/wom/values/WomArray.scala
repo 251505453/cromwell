@@ -25,7 +25,12 @@ object WomArray {
       throw new UnsupportedOperationException(s"An ${womType.toDisplayString} must contain at least one element")
     }
 
-    val coercedValue = TryUtil.sequence(value map womType.memberType.coerceRawValue)
+    val values = value.flatMap{_ match {
+      case WomOptionalValue(_, None) => Seq()
+      case other => Seq(other)
+    }}
+
+    val coercedValue = TryUtil.sequence(values map womType.memberType.coerceRawValue)
     coercedValue match {
       case Success(coercedArray) => new WomArray(womType, coercedArray) {}
       case Failure(f) => throw new UnsupportedOperationException(s"Could not construct array of type $womType with this value: $value", f)

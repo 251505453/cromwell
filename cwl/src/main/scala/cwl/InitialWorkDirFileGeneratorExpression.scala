@@ -6,8 +6,6 @@ import cwl.InitialWorkDirRequirement.IwdrListingArrayEntry
 import wom.expression.IoFunctionSet
 import wom.types.{WomArrayType, WomSingleFileType, WomStringType, WomType}
 import wom.values.{WomArray, WomFile, WomSingleFile, WomString, WomValue}
-
-
 import cats.syntax.validated._
 import common.validation.ErrorOr.{ErrorOr, ShortCircuitingFlatMap}
 import common.validation.Validation._
@@ -17,12 +15,11 @@ import wom.expression.IoFunctionSet
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import io.circe.syntax._
+import wom.callable.MappedAndUnmappedInputs
 
-final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEntry, expressionLib: ExpressionLib) extends CwlWomExpression {
-  override def cwlExpressionType: WomType = WomSingleFileType
-  override def sourceString: String = entry.toString
+final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEntry, expressionLib: ExpressionLib) extends MappedAndUnmappedInputs {
 
-  override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
+  def evaluateValue(inputValues: Map[String, WomValue], mappedInputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
     def mustBeString(womValue: WomValue): ErrorOr[String] = womValue match {
       case WomString(s) => s.validNel
       case other => WomStringType.coerceRawValue(other).map(_.asInstanceOf[WomString].value).toErrorOr
@@ -45,8 +42,9 @@ final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEn
       case IwdrListingArrayEntry.ExpressionDirent(content, direntEntryName, _) =>
         val entryEvaluation: ErrorOr[WomValue] = content match {
           case Expression.ECMAScriptExpression(expr) if expr.value == "$(JSON.stringify(inputs))" =>
-            val jsonValue: String = io.circe.Printer.noSpaces.pretty(inputValues.asJson)
-            WomSingleFile(jsonValue).validNel
+            val jsonValue: String = io.circe.Printer.noSpaces.pretty(mappedInputValues.asJson)
+            val file = better.files.File.newTemporaryFile().write(jsonValue)
+            WomSingleFile(file.path.toString).validNel
           case other =>ExpressionEvaluator.eval(other, ParameterContext(inputValues), expressionLib)
         }
 
@@ -81,13 +79,4 @@ final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEn
       case _ => ??? // TODO CWL and the rest....
     }
   }
-
-
-  override def evaluateFiles(inputTypes: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType): ErrorOr[Set[WomFile]] =
-    "Programmer error: Shouldn't use InitialWorkDirRequirement listing to find output files. You silly goose.".invalidNel
-
-  /**
-    * We already get all of the task inputs when evaluating, and we don't need to highlight anything else
-    */
-  override def inputs: Set[String] = Set.empty
 }

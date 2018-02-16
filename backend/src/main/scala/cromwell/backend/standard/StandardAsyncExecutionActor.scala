@@ -359,11 +359,13 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     def makeStringKeyedMap(list: List[(LocalName, WomValue)]): Map[String, WomValue] = list.toMap map { case (k, v) => k.value -> v }
 
     val command = instantiatedCommandValidation flatMap { instantiatedCommand =>
+
+      //HERE BE THE DRAGONS
       val preprocessedInputs = instantiatedCommand.preprocessedInputs |> makeStringKeyedMap
       val valueMappedPreprocessedInputs = instantiatedCommand.valueMappedPreprocessedInputs |> makeStringKeyedMap
 
       val adHocFileCreations: ErrorOr[List[WomFile]] = callable.adHocFileCreation.toList.flatTraverse(
-        _.evaluateValue(preprocessedInputs, backendEngineFunctions).flatMap(validateAdHocFile)
+        _.evaluateValue(preprocessedInputs,valueMappedPreprocessedInputs, backendEngineFunctions).flatMap(validateAdHocFile)
       )
 
       val adHocFileCreationSideEffectFiles: ErrorOr[List[CommandSetupSideEffectFile]] = adHocFileCreations map { _ map {

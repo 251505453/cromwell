@@ -69,6 +69,11 @@ sealed trait TaskDefinition extends Callable {
   private [wom] def customizedOutputEvaluation: OutputEvaluationFunction
 }
 
+trait MappedAndUnmappedInputs {
+  def evaluateValue(inputValues: Map[String, WomValue], mappedInputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue]
+}
+
+
 /**
   * A task definition for a command line.
   * Can be Callable only or CallableExecutable
@@ -82,7 +87,7 @@ sealed trait CommandTaskDefinition extends TaskDefinition {
   def prefixSeparator: String
   def commandPartSeparator: String
   def stdinRedirection: Option[WomExpression]
-  def adHocFileCreation: Set[WomExpression]
+  def adHocFileCreation: MappedAndUnmappedInputs
   def environmentExpressions: Map[String, WomExpression]
   def additionalGlob: Option[WomGlobFile]
   /**
@@ -139,7 +144,7 @@ final case class CallableTaskDefinition(name: String,
                                         parameterMeta: Map[String, String],
                                         outputs: List[Callable.OutputDefinition],
                                         inputs: List[_ <: Callable.InputDefinition],
-                                        adHocFileCreation: Set[WomExpression],
+                                        adHocFileCreation: MappedAndUnmappedInputs,
                                         environmentExpressions: Map[String, WomExpression],
                                         prefixSeparator: String = ".",
                                         commandPartSeparator: String = "",
