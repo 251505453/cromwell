@@ -6,7 +6,8 @@ import cats.syntax.apply._
 import cats.syntax.traverse._
 import cats.syntax.validated._
 import common.validation.ErrorOr._
-import wom.values.{WomArray, WomBoolean, WomFloat, WomInteger, WomMap, WomObjectLike, WomOptionalValue, WomString, WomValue}
+import jdk.nashorn.api.scripting.ScriptObjectMirror
+import wom.values._
 
 import scala.collection.JavaConverters._
 
@@ -34,7 +35,18 @@ class JsEncoder {
     * @param value A WOM value.
     * @return The javascript equivalent.
     */
+
   def encode(value: WomValue): ErrorOr[AnyRef] = {
+
+    def toJavascriptArray(list: List[AnyRef]): AnyRef = {
+      val emptyJavascriptArray = JsUtil.engine.eval("var arr = []; arr").asInstanceOf[ScriptObjectMirror]
+
+      import java.util.{List => JList}
+      val jlist: JList[Object] = emptyJavascriptArray.to(classOf[JList[Object]])
+      jlist.addAll(list.asJava)
+      jlist
+    }
+
     value match {
       case WomOptionalValue(_, None) => Validated.valid(null)
       case WomOptionalValue(_, Some(innerValue)) => encode(innerValue)
@@ -42,7 +54,7 @@ class JsEncoder {
       case WomInteger(int) => Int.box(int).valid
       case WomFloat(double) => Double.box(double).valid
       case WomBoolean(boolean) => Boolean.box(boolean).valid
-      case WomArray(_, array) => array.toList.traverse[ErrorOr, AnyRef](encode).map(JsArray)
+      case WomArray(_, array) => array.toList.traverse[ErrorOr, AnyRef](encode).map(toJavascriptArray)
       case WomMap(_, map) => map.traverse({
         case (mapKey, mapValue) => (encodeString(mapKey), encode(mapValue)).mapN((_, _))
       }).map(JsMap)

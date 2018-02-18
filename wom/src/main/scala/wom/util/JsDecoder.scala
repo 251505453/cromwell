@@ -60,6 +60,8 @@ class JsDecoder {
     case javaArray: Array[_] =>
       val array = javaArray.map(_.asInstanceOf[AnyRef])
       arrayDecoder(array)
+    case list: java.util.List[_] =>
+      arrayDecoder(list.toArray)
   }
 
   /**

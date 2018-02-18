@@ -1,6 +1,6 @@
 package wom.util
 
-import javax.script.{ScriptContext, SimpleScriptContext}
+import javax.script.{ScriptContext, ScriptEngine, SimpleScriptContext}
 
 import common.validation.ErrorOr._
 import common.validation.Validation._
@@ -58,6 +58,11 @@ object JsUtil {
     } yield decoded
   }
 
+  private val ScriptEngineFactory = new NashornScriptEngineFactory
+
+  // Really make a new one every time?
+  def engine: ScriptEngine = ScriptEngineFactory.getScriptEngine(nashornStrictArgs, getNashornClassLoader, noJavaClassFilter)
+
   /**
     * Evaluates a javascript expression using raw javascript compatible values.
     *
@@ -67,7 +72,6 @@ object JsUtil {
     */
   def evalRaw(expr: String, values: java.util.Map[String, AnyRef]): ErrorOr[AnyRef] = {
     validate {
-      val engine = ScriptEngineFactory.getScriptEngine(nashornStrictArgs, getNashornClassLoader, noJavaClassFilter)
       val bindings = engine.createBindings()
       bindings.asInstanceOf[java.util.Map[String, Any]].putAll(values)
 
@@ -76,8 +80,6 @@ object JsUtil {
       engine.eval(expr, context)
     }
   }
-
-  private val ScriptEngineFactory = new NashornScriptEngineFactory
 
   /**
     * Duplicate of the private jdk.nashorn.api.scripting.NashornScriptEngineFactory#getAppClassLoader()

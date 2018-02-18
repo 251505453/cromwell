@@ -29,7 +29,7 @@ env:
   global:
     - INTEGRATION_TESTS_DIR=centaur/src/main/resources/integrationTestCases
   matrix:
-    # Setting this variable twice will cause the 'script' section to run twice with the respective env var invoked
+    # The 'script' section will run once with each env var invoked
     - BUILD_TYPE=sbt
     - BUILD_TYPE=checkPublish
     - BUILD_TYPE=centaurJes
