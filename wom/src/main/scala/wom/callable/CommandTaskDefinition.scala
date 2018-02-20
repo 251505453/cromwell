@@ -87,7 +87,7 @@ sealed trait CommandTaskDefinition extends TaskDefinition {
   def prefixSeparator: String
   def commandPartSeparator: String
   def stdinRedirection: Option[WomExpression]
-  def adHocFileCreation: MappedAndUnmappedInputs
+  def adHocFileCreation: Set[MappedAndUnmappedInputs]
   def environmentExpressions: Map[String, WomExpression]
   def additionalGlob: Option[WomGlobFile]
   /**
@@ -144,7 +144,7 @@ final case class CallableTaskDefinition(name: String,
                                         parameterMeta: Map[String, String],
                                         outputs: List[Callable.OutputDefinition],
                                         inputs: List[_ <: Callable.InputDefinition],
-                                        adHocFileCreation: MappedAndUnmappedInputs,
+                                        adHocFileCreation: Set[MappedAndUnmappedInputs],
                                         environmentExpressions: Map[String, WomExpression],
                                         prefixSeparator: String = ".",
                                         commandPartSeparator: String = "",
