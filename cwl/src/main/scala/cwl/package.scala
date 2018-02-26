@@ -1,7 +1,7 @@
 
 import common.Checked
-import common.validation.ErrorOr.ErrorOr
 import common.validation.Checked._
+import common.validation.ErrorOr._
 import cwl.CwlType._
 import cwl.ExpressionEvaluator.{ECMAScriptExpression, ECMAScriptFunction, InterpolatedString}
 import cwl.command.ParentName
@@ -10,7 +10,6 @@ import wom.executable.Executable
 import wom.types._
 
 import scala.util.{Failure, Success, Try}
-
 /**
  * This package is intended to parse all CWL files.
  *
@@ -126,6 +125,4 @@ package object cwl extends TypeAliases {
   }
 
   type ExpressionLib = Vector[String]
-
-  val ReadLimit = Option(64 * 1024)
 }
