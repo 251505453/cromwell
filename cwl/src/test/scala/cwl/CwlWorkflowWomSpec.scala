@@ -112,7 +112,7 @@ class CwlWorkflowWomSpec extends FlatSpec with Matchers with TableDrivenProperty
   private val stringOrExpressionTests = Table(
     ("index", "result"),
     (0, Coproduct[StringOrExpression]("grep")),
-    (1, Coproduct[StringOrExpression](Coproduct[Expression](refineMV[MatchesECMAScript]("$(inputs.pattern)")))),
+    (1, Coproduct[StringOrExpression](Coproduct[Expression](refineMV[MatchesInterpolatedString]("$(inputs.pattern)")))),
     (2, Coproduct[StringOrExpression](Coproduct[Expression](refineMV[MatchesECMAFunction]("$" + "{return inputs.file}")))),
     (3, Coproduct[StringOrExpression]("|")),
     (4, Coproduct[StringOrExpression]("wc")),
@@ -123,7 +123,7 @@ class CwlWorkflowWomSpec extends FlatSpec with Matchers with TableDrivenProperty
     case StringOrExpression.String(s) => s"string $s"
     // Although these two cases look the same, they're actually calling different 'value' functions. So we
     // can't collapse this to a single "case StringOrExpression.Expression(e) => e.value":
-    case StringOrExpression.ECMAScriptExpression(e) => e.value
+    case StringOrExpression.InterpolatedString(interpolatedString) => interpolatedString.value
     case StringOrExpression.ECMAScriptFunction(f) => f.value
   }
 

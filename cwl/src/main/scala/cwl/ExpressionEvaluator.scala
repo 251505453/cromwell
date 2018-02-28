@@ -2,7 +2,6 @@ package cwl
 
 import cats.syntax.validated._
 import common.validation.ErrorOr._
-import cwl.ExpressionEvaluator.eval
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.MatchesRegex
 import shapeless.Witness
@@ -13,7 +12,7 @@ import wom.values.{WomFloat, WomInteger, WomString, WomValue}
 // http://www.commonwl.org/v1.0/CommandLineTool.html#Expressions
 object ExpressionEvaluator {
   // A code fragment wrapped in the $(...) syntax must be evaluated as a ECMAScript expression.
-  val ECMAScriptExpressionWitness = Witness("""(?s)\s*\$\((.*)\)\s*""")
+  val ECMAScriptExpressionWitness = Witness("DONT_MATCH_AS_INTERPOLATED_STRING_WORKS_FINE_BUT_COMES_AFTER_IN_COPRODUCT")
   val ECMAScriptExpressionRegex = ECMAScriptExpressionWitness.value.r
   type MatchesECMAScript = MatchesRegex[ECMAScriptExpressionWitness.T]
   type ECMAScriptExpression = String Refined MatchesECMAScript
