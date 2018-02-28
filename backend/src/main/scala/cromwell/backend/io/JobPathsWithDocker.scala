@@ -21,12 +21,18 @@ case class JobPathsWithDocker private[io] (override val workflowPaths: WorkflowP
   override lazy val callExecutionRoot = { callRoot.resolve("execution") }
   val callDockerRoot = callPathBuilder(workflowPaths.dockerWorkflowRoot, jobKey)
   val callExecutionDockerRoot = callDockerRoot.resolve("execution")
+  val callInputsDockerRoot = callDockerRoot.resolve("inputs")
   val callInputsRoot = callRoot.resolve("inputs")
 
   private lazy val callExecutionDockerRootWithSlash = callExecutionDockerRoot.pathAsString.ensureSlashed
+  private lazy val callInputsDockerRootWithSlash = callInputsDockerRoot.pathAsString.ensureSlashed
 
   override def hostPathFromContainerPath(string: String): Path = {
     callExecutionRoot.resolve(string.stripPrefix(callExecutionDockerRootWithSlash))
+  }
+
+  override def hostPathFromContainerInputs(string: String): Path = {
+    callExecutionRoot.resolve(string.stripPrefix(callInputsDockerRootWithSlash))
   }
 
   def toDockerPath(path: Path): Path = {

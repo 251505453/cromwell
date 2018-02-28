@@ -47,6 +47,9 @@ trait JobPaths {
     callExecutionRoot.resolve(string.stripPrefix(rootWithSlash))
   }
 
+
+  def hostPathFromContainerInputs(string: String): Path = ???
+
   def scriptFilename: String = "script"
   def dockerCidFilename: String = "docker_cid"
 

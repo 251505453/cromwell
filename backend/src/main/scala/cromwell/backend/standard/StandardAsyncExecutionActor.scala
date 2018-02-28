@@ -619,7 +619,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     //womFile.mapFile(enginePaths.buildPath(_).pathAsString)
   womFile.mapFile{
     path =>
-      val x = jobPaths.hostPathFromContainerPath(path)
+      val x = jobPaths.hostPathFromContainerInputs(path)
       x.toAbsolutePath.toString
   }
 
