@@ -29,6 +29,8 @@ object CommandTaskDefinition {
   */
   type OutputFunctionResponse = OptionT[Future, EvaluatedOutputs]
 
+  type ValueMapper = WomValue => WomValue
+
   // Function definition to evaluate task outputs
   type OutputEvaluationFunction = (Set[OutputPort], Map[String, WomValue], IoFunctionSet, ExecutionContext) => OutputFunctionResponse
   

@@ -90,11 +90,18 @@ object OutputEvaluator {
     def validateCustomEvaluation(outputs: Map[OutputPort, WomValue]): EvaluatedJobOutputs = {
       def toError(outputPort: OutputPort) = s"Missing output value for ${outputPort.identifier.fullyQualifiedName.value}"
 
+
+      val x = jobDescriptor.taskCall.expressionBasedOutputPorts
+      val y = outputs.keySet.toList
+
+      println("" + x + y)
+
       jobDescriptor.taskCall.expressionBasedOutputPorts.diff(outputs.keySet.toList) match {
         case Nil =>
           val errorMessagePrefix = "Error applying postMapper in short-circuit output evaluation"
           TryUtil.sequenceMap(outputs map { case (k, v) => (k, postMapper(v))}, errorMessagePrefix) match {
-            case Failure(e) => InvalidJobOutputs(NonEmptyList.one(e.getMessage))
+            case Failure(e) =>
+              InvalidJobOutputs(NonEmptyList.of(e.getMessage, e.getStackTrace.take(5).map(_.toString):_*))
             case Success(postMappedOutputs) => ValidJobOutputs(CallOutputs(postMappedOutputs))
           }
         case head :: tail => InvalidJobOutputs(NonEmptyList.of(toError(head), tail.map(toError): _*))
