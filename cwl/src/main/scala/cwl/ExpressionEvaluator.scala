@@ -7,9 +7,10 @@ import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.MatchesRegex
 import shapeless.Witness
 import wom.callable.RuntimeEnvironment
-import wom.types.WomStringType
 import wom.util.JsUtil
 import wom.values.{WomFloat, WomInteger, WomString, WomValue}
+
+import scala.util.matching.Regex
 
 // http://www.commonwl.org/v1.0/CommandLineTool.html#Expressions
 object ExpressionEvaluator {
@@ -59,8 +60,15 @@ object ExpressionEvaluator {
   type InterpolatedString = String Refined MatchesInterpolatedString
 
   def evalExpression(expression: ECMAScriptExpression, parameterContext: ParameterContext, expressionLib: ExpressionLib): ErrorOr[WomValue] = {
-    expression.value match {
-      case ECMAScriptExpressionRegex(script) =>
+    evalExpressionValue(expression.value, parameterContext, expressionLib)
+  }
+
+  private def evalExpressionValue(expressionValue: String,
+                                  parameterContext: ParameterContext,
+                                  expressionLib: ExpressionLib): ErrorOr[WomValue] = {
+    // Nashorn doesn't like an expression floating around. So assign it to a variable and return that variable.
+    expressionValue match {
+      case InterpolatedExpressionRegex(script) =>
         // Nashorn doesn't like an expression floating around. So assign it to a variable and return that variable.
         val variableExpression =
           s"""|var expression_result = EXPRESSION_BODY;
@@ -69,7 +77,7 @@ object ExpressionEvaluator {
         
         eval(expressionFromParts(expressionLib, variableExpression), parameterContext)
       case unmatched =>
-        s"Expression '$unmatched' was unable to be matched to regex '${ECMAScriptExpressionWitness.value}'".invalidNel
+        s"Expression '$unmatched' was unable to be matched to regex '$InterpolatedExpressionRegex'".invalidNel
     }
   }
 
@@ -94,19 +102,33 @@ object ExpressionEvaluator {
     }
   }
 
+  /**
+    * Evaluates expressions within an interpolated string.
+    */
   def evalInterpolatedString(string: InterpolatedString,
                              parameterContext: ParameterContext,
-                             expressionLib: ExpressionLib): ErrorOr[WomString] = {
-    validate {
-      InterpolatedStringRegex.replaceAllIn(string.value, { matchData =>
-        // The match will start with "$(" and end with ")". Get the content within.
-        val expression = matchData.matched match {
-          case InterpolatedExpressionRegex(content) => content
+                             expressionLib: ExpressionLib): ErrorOr[WomValue] = {
+    val stringValue = string.value
+    stringValue match {
+      // If the stringValue is as single value without a prefix/suffix then just evaluate the single expression
+      case InterpolatedExpressionRegex(_) if InterpolatedStringRegex.findAllIn(stringValue).length == 1 =>
+        evalExpressionValue(stringValue, parameterContext, expressionLib)
+
+      case _ =>
+        validate {
+          // NOTE: By using `replaceAllIn` this returns only the first error, not all errors.
+          // To do this correctly would require custom iteration / replacement.
+          val replaced = InterpolatedStringRegex.replaceAllIn(stringValue, { matchData =>
+            val expressionValue = matchData.matched
+            // The match will start with "$(" and end with ")". Get the content within.
+            val errorOrReplacement = evalExpressionValue(expressionValue, parameterContext, expressionLib)
+            val replacement = errorOrReplacement.toTry(s"evaluating: $expressionValue").get.valueString
+            Regex.quoteReplacement(replacement)
+          })
+
+          WomString(replaced)
         }
-        val evaled = eval(expressionFromParts(expressionLib, expression), parameterContext)
-        evaled.toTry(s"evaluating: $expression").get.valueString
-      })
-    } map WomString
+    }
   }
 
   private lazy val cwlJsEncoder = new CwlJsEncoder()

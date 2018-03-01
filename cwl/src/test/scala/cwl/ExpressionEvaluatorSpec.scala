@@ -6,7 +6,7 @@ import eu.timepit.refined._
 import org.scalatest.prop.TableDrivenPropertyChecks
 import org.scalatest.{FlatSpec, Matchers}
 import wom.callable.RuntimeEnvironment
-import wom.values.{WomBoolean, WomSingleFile, WomString, WomValue}
+import wom.values._
 
 class ExpressionEvaluatorSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks {
 
@@ -24,18 +24,29 @@ class ExpressionEvaluatorSpec extends FlatSpec with Matchers with TableDrivenPro
 
   private val interpolatedStringTests = Table(
     ("description", "expression", "expected"),
-    ("nested parens", """$(parseInt("6")).$(parseInt(("2")) + "" + parseInt(((("8")))))""", "6.28"),
+    ("nested parens", """$(parseInt("6")).$(parseInt(("2")) + "" + parseInt(((("8")))))""", WomString("6.28")),
+
+    // TODO: Our complex stackoverflow regex fails on the following, for now.
+    //("missing open parens", """$(parseInt("6")).$(parseInt(("2")) + "" + parseInt((("8")))))""", WomString("""TODO""")),
+    //("missing closing parens", """$(parseInt("6")).$(parseInt(("2")) + "" + parseInt(((("8"))))""", WomString("""TODO""")),
+    //("quoted open parens", """$("(")""", WomString("""TODO""")),
+
+    ("quoted closing parens", """$(")")""", WomString(""")""")),
     ("prefixed/suffixed nested parens",
       """6.$(parseInt("2"))$(parseInt(("8")) + "" + parseInt(((("3")))))1""",
-      "6.2831"),
-    ("expression libs",
+      WomString("6.2831")),
+    ("expressions using libs",
       """$(t("The file is <%= data.inputs.file1.path.split('/').slice(-1)[0] %>\n"))""",
-      "The file is my.file.txt\n"),
-    ("two expressions", """$(runtime.outdir)/$(inputs.cram.basename)""", "out/my.cram"),
-    ("two expressions suffixed", """$(runtime.outdir)/$(inputs.cram.basename).crai""", "out/my.cram.crai"),
+      WomString("The file is my.file.txt\n")),
+    ("two expressions", """$(runtime.outdir)/$(inputs.cram.basename)""", WomString("out/my.cram")),
+    ("two expressions suffixed", """$(runtime.outdir)/$(inputs.cram.basename).crai""", WomString("out/my.cram.crai")),
     ("two expressions prefixed/suffixed",
       """/path/to/$(runtime.outdir)/$(inputs.cram.basename).crai""",
-      "/path/to/out/my.cram.crai")
+      WomString("/path/to/out/my.cram.crai")),
+    ("a replacement that must be escaped", """$("$(hello)")""", WomString("$(hello)")),
+    ("a replacement returning a json object",
+      """$({'output': (inputs.i1 == 'the-default' ? 1 : 2)})""",
+      WomObject(Map("output" -> WomInteger(2))))
   )
 
   private lazy val interpolatedStringsExpressionLib = Vector(
@@ -60,7 +71,7 @@ class ExpressionEvaluatorSpec extends FlatSpec with Matchers with TableDrivenPro
         interpolatedStringsParameterContext,
         interpolatedStringsExpressionLib
       )
-      actual.toTry.get.valueString should be(expected)
+      actual.toTry.get should be(expected)
     }
   }
 }
