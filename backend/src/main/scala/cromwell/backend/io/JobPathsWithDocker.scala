@@ -32,7 +32,8 @@ case class JobPathsWithDocker private[io] (override val workflowPaths: WorkflowP
   }
 
   override def hostPathFromContainerInputs(string: String): Path = {
-    callExecutionRoot.resolve(string.stripPrefix(callInputsDockerRootWithSlash))
+    val stripped = string.stripPrefix(callInputsDockerRootWithSlash)
+    callExecutionRoot.resolve(stripped)
   }
 
   def toDockerPath(path: Path): Path = {

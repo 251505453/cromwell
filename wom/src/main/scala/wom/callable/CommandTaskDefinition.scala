@@ -71,9 +71,7 @@ sealed trait TaskDefinition extends Callable {
   private [wom] def customizedOutputEvaluation: OutputEvaluationFunction
 }
 
-trait MappedAndUnmappedInputs {
-  def evaluateValue(inputValues: Map[String, WomValue], mappedInputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue]
-}
+
 
 
 /**
