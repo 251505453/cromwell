@@ -30,6 +30,7 @@ class JobExecutionTokenDispenserActor(override val serviceRegistryActor: ActorRe
 
   override def preStart() = {
     // Fixed for now, but soon to be modifiable 
+    log.info("{} Running with rate: {}", self.path.name, rate)
     timers.startPeriodicTimer(TokensTimerKey, TokensAvailable(rate.n), rate.per)
     super.preStart()
   }
