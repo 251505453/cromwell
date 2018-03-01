@@ -36,8 +36,8 @@ class CommandOutputExpressionSpec extends FlatSpec with Matchers {
     val data = "41.1"
     val tempFile = better.files.File.newTemporaryFile("glob.", ".txt").write(data)
     val globExpression = Coproduct[Expression](refineMV[MatchesInterpolatedString]("$(inputs.myTempFile)"))
-    val outputEvalExpression = Coproduct[Expression](refineMV[MatchesECMAFunction](
-      "$" + "{return (parseInt(self[0].contents) + 1).toFixed()}"))
+    val outputEvalExpression = Coproduct[Expression](refineMV[MatchesInterpolatedString](
+      "$((parseInt(self[0].contents) + 1).toFixed())"))
     val glob = Coproduct[Glob](Coproduct[StringOrExpression](globExpression))
     val outputEval = Coproduct[StringOrExpression](outputEvalExpression)
     val outputBinding = CommandOutputBinding(Option(glob), Option(true), Option(outputEval))

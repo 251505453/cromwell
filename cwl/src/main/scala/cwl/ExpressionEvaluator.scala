@@ -2,10 +2,12 @@ package cwl
 
 import cats.syntax.validated._
 import common.validation.ErrorOr._
+import common.validation.Validation._
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.string.MatchesRegex
 import shapeless.Witness
 import wom.callable.RuntimeEnvironment
+import wom.types.WomStringType
 import wom.util.JsUtil
 import wom.values.{WomFloat, WomInteger, WomString, WomValue}
 
@@ -24,13 +26,35 @@ object ExpressionEvaluator {
   type MatchesECMAFunction = MatchesRegex[ECMAScriptFunctionWitness.T]
   type ECMAScriptFunction = String Refined MatchesECMAFunction
 
+  /*
+  Via:
+  - https://stackoverflow.com/questions/47162098#answer-47162099
+  Online tests:
+  - https://regex101.com/
+  - http://java-regex-tester.appspot.com/
+
+  Returns matches that begin with "$(" and end with ")" ensuring that parens are balanced within.
+   */
+  val InterpolatedStringCore =
+    """(?=\$\()(?:(?=.*?\((?!.*?\1)(.*\)(?!.*\2).*))(?=.*?\)(?!.*?\2)(.*)).)+?.*?(?=\1)[^(]*(?=\2$)"""
+
+  /*
+  The pattern for an interpolated string, with perhaps some leading or trailing characters.
+  Not sure how to use this with `replaceAllIn()`, so there is a separate InterpolatedStringRegex.
+   */
+  val InterpolatedStringWitnessPattern = s"(?s).*?$InterpolatedStringCore.*?"
+  val InterpolatedStringRegex = s"(?s)$InterpolatedStringCore".r
+
+  // Inner regex. Should actually just be stripping "$(", ")", but JIC allowing whitespace too.
+  val InterpolatedExpressionRegex =
+    """(?s)\s*\$\((.*)\)\s*""".r
+
   // This is not ECMAScript, just what CWL uses for interpolated expressions. The pattern is 'before$(expression)after'.
   // The regex uses a non-greedy quantifier on the 'before' to allow the expression to be processed from left to right,
   // and there are capturing groups around each portion. The official specification for interpolated strings is in the
   // last part of this section:
   // http://www.commonwl.org/v1.0/CommandLineTool.html#Parameter_references
-  val InterpolatedStringWitness = Witness("""(?s)(.*?)\$\(([^\)]+)\)(.*)""")
-  val InterpolatedStringRegex = InterpolatedStringWitness.value.r
+  val InterpolatedStringWitness = Witness(InterpolatedStringWitnessPattern)
   type MatchesInterpolatedString = MatchesRegex[InterpolatedStringWitness.T]
   type InterpolatedString = String Refined MatchesInterpolatedString
 
@@ -70,26 +94,19 @@ object ExpressionEvaluator {
     }
   }
 
-  def evalInterpolatedString(string: InterpolatedString, parameterContext: ParameterContext, expressionLib: ExpressionLib): ErrorOr[WomValue] = {
-    def interpolate(remaining: String, acc: String = ""): ErrorOr[String] = {
-      remaining match {
-        // The match is non-greedy in `before` so `expr` will always contain the first expression. e.g.:
-        //
-        // "foo $(bar) baz $(qux) quux" would match with before = "foo ", expr = "bar", after = " baz $(qux) quux"
-        case InterpolatedStringRegex(before, expr, after) =>
-          eval(expressionFromParts(expressionLib, expr), parameterContext) flatMap { v =>
-            interpolate(after, acc + before + v.valueString)
-          }
-        case r => (acc + r).validNel
-      }
-    }
-
-    string.value match {
-      case InterpolatedStringRegex(_, _, _) => interpolate(string.value) map WomString.apply
-
-      case unmatched =>
-        s"Expression '$unmatched' was unable to be matched to regex '${InterpolatedStringWitness.value}'".invalidNel
-    }
+  def evalInterpolatedString(string: InterpolatedString,
+                             parameterContext: ParameterContext,
+                             expressionLib: ExpressionLib): ErrorOr[WomString] = {
+    validate {
+      InterpolatedStringRegex.replaceAllIn(string.value, { matchData =>
+        // The match will start with "$(" and end with ")". Get the content within.
+        val expression = matchData.matched match {
+          case InterpolatedExpressionRegex(content) => content
+        }
+        val evaled = eval(expressionFromParts(expressionLib, expression), parameterContext)
+        evaled.toTry(s"evaluating: $expression").get.valueString
+      })
+    } map WomString
   }
 
   private lazy val cwlJsEncoder = new CwlJsEncoder()

@@ -97,19 +97,24 @@ object InputParameter {
     *
     * NOTE: There may be _many_ cases not implemented here that need to be fixed.
     */
-  def inputValueMapper(inputParameter: InputParameter, expressionLib: ExpressionLib): InputValueMapper = {
+  def inputValueMapper(inputParameter: InputParameter,
+                       inputType: MyriadInputType,
+                       expressionLib: ExpressionLib): InputValueMapper = {
     ioFunctionSet: IoFunctionSet => {
 
       def populateFiles(womValue: WomValue): ErrorOr[WomValue] = {
         womValue match {
           case womMaybePopulatedFile: WomMaybePopulatedFile =>
             val parameterContext = ParameterContext(self = womMaybePopulatedFile)
+            val secondaryFilesFromInputParameter = inputParameter.secondaryFiles
+            val secondaryFilesFromType = inputType.fold(MyriadInputTypeToSecondaryFiles)
+            val secondaryFiles = secondaryFilesFromInputParameter orElse secondaryFilesFromType
             for {
               loaded <- maybeLoadContents(womMaybePopulatedFile, ioFunctionSet, inputParameter.loadContents)
               secondaries <- FileParameter.secondaryFiles(
                 loaded,
                 WomSingleFileType,
-                inputParameter.secondaryFiles,
+                secondaryFiles,
                 parameterContext,
                 expressionLib
               )
